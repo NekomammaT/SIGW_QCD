@@ -325,8 +325,6 @@ end;
 
 lntspan = -5.:0.01:5;
 sspan = 0:0.01:1;
-#lntspan = -5:0.1:5;
-#sspan = 0:0.1:1;
 tList = [10^lnt for lnt=lntspan];
 sList = [s for s=sspan];
 
@@ -350,16 +348,15 @@ function I2List(k)
     return I2List
 end;
 
-@time for i=71:10:91
-    #if i%10 == 1
-    #    continue
-    #else
+for i=201:100:501
+    println("ki = ", i, "...")
+    @time begin
         open(string("data/Is/I1_", i, ".dat"),"w") do out
             Base.print_array(out, I1List(kList[i]))
         end
-
+        
         open(string("data/Is/I2_", i, ".dat"),"w") do out
             Base.print_array(out, I2List(kList[i]))
         end
-    #end
+    end
 end;
