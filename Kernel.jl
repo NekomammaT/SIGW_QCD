@@ -348,13 +348,15 @@ function I2List(k)
     return I2List
 end;
 
-for i=51:100:451
+for i=361:10:391
     println("ki = ", i, "...")
     @time begin
         open(string("data/Is/I1_", i, ".dat"),"w") do out
             Base.print_array(out, I1List(kList[i]))
         end
-        
+    end
+
+    @time begin
         open(string("data/Is/I2_", i, ".dat"),"w") do out
             Base.print_array(out, I2List(kList[i]))
         end
