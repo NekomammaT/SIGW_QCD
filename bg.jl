@@ -1,3 +1,10 @@
+import Pkg;
+Pkg.add("ForwardDiff"); 
+Pkg.add("DifferentialEquations"); 
+Pkg.add("QuadGK"); 
+Pkg.add("Interpolations"); 
+Pkg.add("SpecialFunctions"); 
+Pkg.add("LinearAlgebra");
 using ForwardDiff, DifferentialEquations, QuadGK, Interpolations, SpecialFunctions, LinearAlgebra
 
 Mpl = 2.435e18; # reduced Planck mass in GeV
