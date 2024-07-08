@@ -348,7 +348,7 @@ function I2List(k)
     return I2List
 end;
 
-for i=111:10:141
+for i=161:10:191
     println("ki = ", i, "...")
     @time begin
         open(string("data/Is/I1_", i, ".dat"),"w") do out
