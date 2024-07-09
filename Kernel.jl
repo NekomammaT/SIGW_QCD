@@ -259,7 +259,7 @@ end;
 
 #lntspan = -5.:0.01:5;
 #sspan = 0:0.01:1;
-lntspan = -5:0.5:5;
+lntspan = -5:0.1:5;
 sspan = 0:0.1:1;
 tList = [10^lnt for lnt=lntspan];
 sList = [s for s=sspan];
@@ -285,7 +285,7 @@ function I2List(k)
 end;
 
 @time writedlm(string("data/Is/I1_", iGW, ".dat"), I1List(kList[iGW]));
-#@time writedlm("data/Is/I2_1.dat", I2List(1e4));
+@time writedlm(string("data/Is/I2_", iGW, ".dat"), I2List(kList[iGW]));
 
 println("Completed.")
 
