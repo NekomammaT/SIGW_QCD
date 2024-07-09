@@ -1,11 +1,4 @@
-import Pkg;
-Pkg.add("ForwardDiff"); 
-Pkg.add("DifferentialEquations"); 
-Pkg.add("QuadGK"); 
-Pkg.add("Interpolations"); 
-Pkg.add("SpecialFunctions"); 
-Pkg.add("LinearAlgebra");
-using ForwardDiff, DifferentialEquations, QuadGK, Interpolations, SpecialFunctions, LinearAlgebra
+using ForwardDiff, Plots, LaTeXStrings, DifferentialEquations, Roots, QuadGK, HCubature, MultiQuad, Interpolations, Dierckx, SpecialFunctions, LinearAlgebra, DelimitedFiles
 
 Mpl = 2.435e18; # reduced Planck mass in GeV
 c = 299792458; # speed of light in m/s
@@ -23,7 +16,7 @@ T0 = 2.725*KinGeV; # current temperature
 grho0 = 3.383; # current grho
 gs0 = 3.931; # current gs
 
-#println(Threads.nthreads())
+println("# of threads : ", Threads.nthreads())
 
 
 ai = [1, 1.11724, 3.12672e-1, -4.68049e-2, -2.65004e-2, -1.19760e-3, 1.82812e-4, 1.36436e-4, 8.55051e-5, 1.22840e-5, 3.82259e-7, -6.87035e-9];
@@ -145,10 +138,7 @@ end;
 ui = [Ti,scaleai];
 lnetaspan = (log(etai),log(etaf));
 bgprob = ODEProblem(bgEoM,ui,lnetaspan);
-
-println("Background EoM being solved...")
-@time bgsol = solve(bgprob,Tsit5(),reltol=1e-10,abstol=1e-10);
-
+bgsol = solve(bgprob,Tsit5(),reltol=1e-10,abstol=1e-10);
 
 Tsol(eta) = bgsol(log(eta))[1];
 asol(eta) = bgsol(log(eta))[2];
@@ -161,26 +151,20 @@ rhoQnorm(eta) = rho(Tnorm(eta))^(1/4)
 af = anorm(norm*etaf); # renormalised scale factor at the final time
 calHf = calHnorm(norm*etaf); # calH at the final time
 
+etalist = [norm*exp(i) for i in bgsol.t];
+
 EoSwsol(eta) = EoSw(Tnorm(eta));
 cs2sol(eta) = cs2(Tnorm(eta));
 grhosol(eta) = grho(Tnorm(eta));
 gssol(eta) = gs(Tnorm(eta));
 
-lnetaspan = log10(norm*etai):0.01:log10(norm*etaf)
+anormList = [anorm(eta) for eta in etalist];
+calHList = [calHnorm(eta) for eta in etalist];
+EoSwList = [EoSwsol(eta) for eta in etalist];
+cs2List = [cs2sol(eta) for eta in etalist];
+grhoList = [grhosol(eta) for eta in etalist];
+gsList = [gssol(eta) for eta in etalist];
 
-lnetaList = [lneta for lneta in lnetaspan];
-anormList = [anorm(10^lneta) for lneta in lnetaspan];
-calHList = [calHnorm(10^lneta) for lneta in lnetaspan];
-EoSwList = [EoSwsol(10^lneta) for lneta in lnetaspan];
-cs2List = [cs2sol(10^lneta) for lneta in lnetaspan];
-grhoList = [grhosol(10^lneta) for lneta in lnetaspan];
-gsList = [gssol(10^lneta) for lneta in lnetaspan];
+writedlm("data/bg.csv", hcat(etalist,anormList,calHList,EoSwList,cs2List,grhoList,gsList), ',');
 
-println("Data being exported...")
-@time begin
-    open("data/bg.dat","w") do out
-        Base.print_array(out, hcat(lnetaList[:],anormList[:],calHList[:],EoSwList[:],cs2List[:],grhoList[:],gsList[:]))
-    end
-end
-
-    
+println("Completed.")

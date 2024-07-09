@@ -1,4 +1,4 @@
-using ForwardDiff, DifferentialEquations, QuadGK, MultiQuad, Interpolations, SpecialFunctions, LinearAlgebra
+using ForwardDiff, Plots, LaTeXStrings, DifferentialEquations, Roots, QuadGK, HCubature, MultiQuad, Interpolations, Dierckx, SpecialFunctions, LinearAlgebra, DelimitedFiles
 
 Mpl = 2.435e18; # reduced Planck mass in GeV
 c = 299792458; # speed of light in m/s
@@ -16,81 +16,55 @@ T0 = 2.725*KinGeV; # current temperature
 grho0 = 3.383; # current grho
 gs0 = 3.931; # current gs
 
+kmin = 1e4;
+kmax = 1e9;
+kList = [10^lnk for lnk=log10(kmin):0.01:log10(kmax)];
+lnkList = log10.(kList);
 
-f = open("data/bg.dat","r");
-body = readlines(f);
-close(f)
 
-strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
+println("# of threads : ", Threads.nthreads())
 
-lnetaList = [numarray[i][1] for i=1:length(numarray)];
-anormList = [numarray[i][2] for i=1:length(numarray)];
-calHList = [numarray[i][3] for i=1:length(numarray)];
-EoSwList = [numarray[i][4] for i=1:length(numarray)];
-cs2List = [numarray[i][5] for i=1:length(numarray)];
-grhoList = [numarray[i][6] for i=1:length(numarray)];
-gsList = [numarray[i][7] for i=1:length(numarray)];
+if !(length(ARGS) == 1)
+    println("Specify a correct value of iGW.")
+    exit(0)
+end
 
-lnetaspan = range(lnetaList[1], lnetaList[length(lnetaList)], length=length(lnetaList))
-etai = 10^lnetaList[1];
-etaf = 10^lnetaList[length(lnetaList)];
+iGW = parse(Int,ARGS[1]);
 
-aCSI = CubicSplineInterpolation(lnetaspan, anormList);
-aint(eta) = aCSI(log10(eta));
+if !(1 <= iGW <= length(kList))
+    println("Specify a correct value of iGW.")
+    exit(0)
+end
 
-calHCSI = CubicSplineInterpolation(lnetaspan, calHList);
-function calHint(eta) 
-    if eta < etai
-        return 1/eta
-    else
-        return calHCSI(log10(eta))
-    end
-end;
+println("iGW = ", iGW)
 
-EoSwCSI = CubicSplineInterpolation(lnetaspan, EoSwList);
-function EoSwint(eta) 
-    if eta < etai
-        return 1/3
-    else
-        return EoSwCSI(log10(eta))
-    end
-end;
 
-cs2CSI = CubicSplineInterpolation(lnetaspan, cs2List);
-function cs2int(eta) 
-    if eta < etai
-        return 1/3
-    else
-        return cs2CSI(log10(eta))
-    end
-end;
+bgdata = readdlm("data/bg.csv", ',');
 
-grhoCSI = CubicSplineInterpolation(lnetaspan, grhoList);
-grhoint(eta) = grhoCSI(log10(eta));
+etaList = bgdata[:,1];
+anormList = bgdata[:,2];
+calHList = bgdata[:,3];
+EoSwList = bgdata[:,4];
+cs2List = bgdata[:,5];
+grhoList = bgdata[:,6];
+gsList = bgdata[:,7];
 
-gsCSI = CubicSplineInterpolation(lnetaspan, gsList);
-gsint(eta) = gsCSI(log10(eta));
+lnetaList = log10.(etaList);
+etai = etaList[1];
+etaf = etaList[length(etaList)];
 
-@time begin
-    f = open("data/Phi.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    PhiList = reduce(hcat,numarray);
-
-    f = open("data/Pi.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    PiList = reduce(hcat,numarray);
-end;
+alneta = Spline1D(lnetaList, anormList, k=3);
+aint(eta) = alneta(log10(eta))
+calHlneta = Spline1D(lnetaList, calHList, k=3);
+calHint(eta) = calHlneta(log10(eta));
+EoSwlneta = Spline1D(lnetaList, EoSwList, k=3);
+EoSwint(eta) = EoSwlneta(log10(eta))
+cs2lneta = Spline1D(lnetaList, cs2List, k=3);
+cs2int(eta) = cs2lneta(log10(eta));
+grholneta = Spline1D(lnetaList, grhoList, k=3);
+grhoint(eta) = grholneta(log10(eta))
+gslneta = Spline1D(lnetaList, gsList, k=3);
+gsint(eta) = gslneta(log10(eta));
 
 PhiRD1(x) = 9/x^2 * (sin(x/sqrt(3))/(x/sqrt(3)) - cos(x/sqrt(3))); # Phi in exact RD
 PhiRD2(x) = 9/x^2 * (cos(x/sqrt(3))/(x/sqrt(3)) + sin(x/sqrt(3)));
@@ -100,78 +74,35 @@ MPhi(x) = [PhiRD1(x) PhiRD2(x); PhipRD1(x) PhipRD2(x)];
 PhiRDc(x,xc,Phic,Pic) = (MPhi(x)*inv(MPhi(xc))*[Phic,Pic])[1];
 PhipRDc(x,xc,Phic,Pic) = (MPhi(x)*inv(MPhi(xc))*[Phic,Pic])[2];
 
-kmin = 1e4;
-kmax = 1e9;
-kList = [10^lnk for lnk=log10(kmin):0.01:log10(kmax)];
-
 xi = 1e-2;
 xf = 400;
-xList = [x for x=xi:0.01:xf];
 
-lnkspan = log10(kmin):0.01:log10(kmax);
-xspan = xi:0.01:xf;
+scalardata = readdlm("data/scalar.csv", ',');
+xList = scalardata[1,:];
+PhiList = scalardata[2:1+length(kList),:];
+PiList = scalardata[2+length(kList):size(scalardata)[1],:];
 
-PhiCSI = CubicSplineInterpolation((lnkspan, xspan), PhiList);
-function Phiint(k,x)
+PhiCSI = Spline2D(lnkList,xList,PhiList,kx=3,ky=3);
+PiCSI = Spline2D(lnkList,xList,PiList,kx=3,ky=3);
+
+function Phiint(k,x) 
     if x < xi
         return PhiRD1(x)
     elseif x > xf
-        return PhiRDc(x,xf,PhiCSI(log10(k),xf),PiCSI(log10(k),xf)) 
-    else
+        return PhiRDc(x,xf,PhiCSI(log10(k),xf),PiCSI(log10(k),xf))
+    else 
         return PhiCSI(log10(k),x)
-    end;
+    end
 end;
 
-PiCSI = CubicSplineInterpolation((lnkspan, xspan), PiList);
 function Piint(k,x) 
     if x < xi
         return PhipRD1(x)
     elseif x > xf
         return PhipRDc(x,xf,PhiCSI(log10(k),xf),PiCSI(log10(k),xf))
-    else
+    else 
         return PiCSI(log10(k),x)
     end
-end;
-
-@time begin
-    f = open("data/g1.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    g1List = reduce(hcat,numarray);
-
-
-    f = open("data/g1p.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    g1pList = reduce(hcat,numarray);
-
-
-    f = open("data/g2.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    g2List = reduce(hcat,numarray);
-
-
-    f = open("data/g2p.dat","r");
-    body = readlines(f);
-    close(f)
-
-    strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-    numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
-
-    g2pList = reduce(hcat,numarray);
 end;
 
 g1RD(x) = cos(x);
@@ -185,89 +116,92 @@ gpRDc(x,xc,gc,gpc) = (Mg(x)*inv(Mg(xc))*[gc,gpc])[2];
 kmin = 1e4;
 kmax = 1e9;
 kList = [10^lnk for lnk=log10(kmin):0.01:log10(kmax)];
+lnkList = log10.(kList);
 
 xi = 1e-2;
 xf = 400;
-xList = [x for x=xi:0.01:xf];
 
-lnkspan = log10(kmin):0.01:log10(kmax);
-xspan = xi:0.01:xf;
+g1data = readdlm("data/g1.csv", ',');
+x1List = g1data[1,:];
+g1List = g1data[2:1+length(kList),:];
+g1pList = g1data[2+length(kList):size(g1data)[1],:];
 
-g1CSI = CubicSplineInterpolation((lnkspan, xspan), g1List);
+g2data = readdlm("data/g2.csv", ',');
+x2List = g2data[1,:];
+g2List = g2data[2:1+length(kList),:];
+g2pList = g2data[2+length(kList):size(g2data)[1],:];
+
+g1CSI = Spline2D(lnkList,x1List,g1List,kx=3,ky=3);
+g1pCSI = Spline2D(lnkList,x1List,g1pList,kx=3,ky=3);
+g2CSI = Spline2D(lnkList,x2List,g2List,kx=3,ky=3);
+g2pCSI = Spline2D(lnkList,x2List,g2pList,kx=3,ky=3);
+
 function g1int(k,x) 
     if x < xi
         return g1RD(x)
     elseif x > xf
-        return gRDc(x,xf,g1CSI(log10(k),xf),g1pCSI(log10(k),xf)) 
-    else
+        return gRDc(x,xf,g1CSI(log10(k),xf),g1pCSI(log10(k),xf))
+    else 
         return g1CSI(log10(k),x)
     end
 end;
 
-g1pCSI = CubicSplineInterpolation((lnkspan, xspan), g1pList);
 function g1pint(k,x) 
     if x < xi
         return g1pRD(x)
     elseif x > xf
-        return gpRDc(x,xf,g1CSI(log10(k),xf),g1pCSI(log10(k),xf)) 
-    else
+        return gpRDc(x,xf,g1CSI(log10(k),xf),g1pCSI(log10(k),xf))
+    else 
         return g1pCSI(log10(k),x)
     end
 end;
 
-g2CSI = CubicSplineInterpolation((lnkspan, xspan), g2List);
 function g2int(k,x) 
     if x < xi
         return g2RD(x)
     elseif x > xf
-        return gRDc(x,xf,g2CSI(log10(k),xf),g2pCSI(log10(k),xf)) 
-    else
+        return gRDc(x,xf,g2CSI(log10(k),xf),g2pCSI(log10(k),xf))
+    else 
         return g2CSI(log10(k),x)
     end
 end;
 
-g2pCSI = CubicSplineInterpolation((lnkspan, xspan), g2pList);
 function g2pint(k,x) 
     if x < xi
         return g2pRD(x)
     elseif x > xf
-        return gpRDc(x,xf,g2CSI(log10(k),xf),g2pCSI(log10(k),xf)) 
-    else
+        return gpRDc(x,xf,g2CSI(log10(k),xf),g2pCSI(log10(k),xf))
+    else 
         return g2pCSI(log10(k),x)
     end
 end;
 
-f = open("data/g1g2coeff.dat","r");
-body = readlines(f);
-close(f)
+coeffdata = readdlm("data/g1g2coeff.csv", ',');
 
-strarray = [split(body[i],r"\s+",keepempty=false) for i=1:length(body)];
-numarray = [parse.(Float64, strarray[i]) for i=1:length(strarray)];
+lnkList = coeffdata[:,1];
+g1g1List = coeffdata[:,2];
+g1g2List = coeffdata[:,3];
+g2g2List = coeffdata[:,4];
+coeffList = coeffdata[:,5];
+OlinList = coeffdata[:,6];
 
-lnkList = [numarray[i][1] for i=1:length(numarray)];
-g1g1List = [numarray[i][2] for i=1:length(numarray)];
-g1g2List = [numarray[i][3] for i=1:length(numarray)];
-g2g2List = [numarray[i][4] for i=1:length(numarray)];
-coeffList = [numarray[i][5] for i=1:length(numarray)];
-OlinList = [numarray[i][6] for i=1:length(numarray)];
-
-lnkspan = range(lnkList[1], lnkList[length(lnkList)], length=length(lnkList))
-kList = [10^lnk for lnk in lnkspan]
-
-g1g1CSI = CubicSplineInterpolation(lnkspan, g1g1List);
+g1g1CSI = Spline1D(lnkList, g1g1List, k=3);
 g1g1int(k) = g1g1CSI(log10(k));
 
-g1g2CSI = CubicSplineInterpolation(lnkspan, g1g2List);
+g1g2CSI = Spline1D(lnkList, g1g2List, k=3);
 g1g2int(k) = g1g2CSI(log10(k));
 
-g2g2CSI = CubicSplineInterpolation(lnkspan, g2g2List);
+g2g2CSI = Spline1D(lnkList, g2g2List, k=3);
 g2g2int(k) = g2g2CSI(log10(k));
 
-coeffCSI = CubicSplineInterpolation(lnkspan, coeffList);
+coeffCSI = Spline1D(lnkList, coeffList, k=3);
 coeffint(k) = coeffCSI(log10(k));
 
-OlinCSI = CubicSplineInterpolation(lnkspan, OlinList);
+OlinCSI = Spline1D(lnkList, OlinList, k=3);
 Olinint(k) = OlinCSI(log10(k));
+
+
+xcut = 10;
 
 function I1(k,s,t)
     u = (t+s+1)/2
@@ -288,8 +222,8 @@ function I1(k,s,t)
         x2i = k/k2*xi
         x1f = k/k1*xf
         x2f = k/k2*xf
-        if u > 10 && v > 10
-            return -quadgk(f,min(xi,x1i,x2i),max(min(xf,x1f,x2f),10);rtol=1e-10,atol=1e-11)[1]
+        if u > xcut && v > xcut
+            return -quadgk(f,min(xi,x1i,x2i),max(min(xf,x1f,x2f),xcut);rtol=1e-10,atol=1e-12)[1]
         else
             return -quadgk(f,min(xi,x1i,x2i),xf)[1]
         end
@@ -315,16 +249,18 @@ function I2(k,s,t)
         x2i = k/k2*xi
         x1f = k/k1*xf
         x2f = k/k2*xf
-        if u > 10 && v > 10
-            return -quadgk(f,min(xi,x1i,x2i),max(min(xf,x1f,x2f),10);rtol=1e-10,atol=1e-11)[1]
+        if u > xcut && v > xcut
+            return -quadgk(f,min(xi,x1i,x2i),max(min(xf,x1f,x2f),xcut);rtol=1e-10,atol=1e-12)[1]
         else
             return -quadgk(f,min(xi,x1i,x2i),xf)[1]
         end
     end
 end;
 
-lntspan = -5.:0.01:5;
-sspan = 0:0.01:1;
+#lntspan = -5.:0.01:5;
+#sspan = 0:0.01:1;
+lntspan = -5:0.5:5;
+sspan = 0:0.1:1;
 tList = [10^lnt for lnt=lntspan];
 sList = [s for s=sspan];
 
@@ -348,17 +284,8 @@ function I2List(k)
     return I2List
 end;
 
-for i=161:10:191
-    println("ki = ", i, "...")
-    @time begin
-        open(string("data/Is/I1_", i, ".dat"),"w") do out
-            Base.print_array(out, I1List(kList[i]))
-        end
-    end
+@time writedlm(string("data/Is/I1_", iGW, ".dat"), I1List(kList[iGW]));
+#@time writedlm("data/Is/I2_1.dat", I2List(1e4));
 
-    @time begin
-        open(string("data/Is/I2_", i, ".dat"),"w") do out
-            Base.print_array(out, I2List(kList[i]))
-        end
-    end
-end;
+println("Completed.")
+
