@@ -257,10 +257,10 @@ function I2(k,s,t)
     end
 end;
 
-#lntspan = -5.:0.01:5;
-#sspan = 0:0.01:1;
-lntspan = -5:0.1:5;
-sspan = 0:0.1:1;
+lntspan = -5.:0.01:5;
+sspan = 0:0.01:1;
+#lntspan = -5:0.1:5;
+#sspan = 0:0.1:1;
 tList = [10^lnt for lnt=lntspan];
 sList = [s for s=sspan];
 
