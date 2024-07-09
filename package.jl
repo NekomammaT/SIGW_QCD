@@ -1,0 +1,14 @@
+import Pkg;
+Pkg.add("ForwardDiff"); 
+Pkg.add("Plots"); 
+Pkg.add("LaTeXStrings"); 
+Pkg.add("DifferentialEquations"); 
+Pkg.add("Roots"); 
+Pkg.add("QuadGK"); 
+Pkg.add("HCubature");
+Pkg.add("MultiQuad");
+Pkg.add("Interpolations");
+Pkg.add("Dierckx");
+Pkg.add("SpecialFunctions");
+Pkg.add("LinearAlgebra");
+Pkg.add("DelimitedFiles");
