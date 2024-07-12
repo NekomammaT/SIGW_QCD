@@ -1,6 +1,6 @@
 using DelimitedFiles;
 
-IsDir = "data/IsHubble/";
+IsDir = "data/Is/";
 
 I1data = readdlm(string(IsDir, "I1_1.dat"));
 I2data = readdlm(string(IsDir, "I2_1.dat"));
