@@ -284,8 +284,8 @@ function I2List(k)
     return I2List
 end;
 
-@time writedlm(string("data/Is/I1_", iGW, ".dat"), I1List(kList[iGW]));
-@time writedlm(string("data/Is/I2_", iGW, ".dat"), I2List(kList[iGW]));
+@time writedlm(string("data/Is/I1_", iGW, ".csv"), I1List(kList[iGW]), ',');
+@time writedlm(string("data/Is/I2_", iGW, ".csv"), I2List(kList[iGW]), ',');
 
 println("Completed.")
 
