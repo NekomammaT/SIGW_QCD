@@ -8,7 +8,7 @@ from scipy.integrate import trapezoid
 
 import kernel as K
 
-KDATA = os.path.join(os.path.dirname(__file__), "..", "..", "kernels_data")
+KDATA = os.path.join(os.path.dirname(__file__), "..", "kernels_data")
 
 
 class KernelTable:

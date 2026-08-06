@@ -12,7 +12,7 @@ import kernel as K
 import kernel_table as KT
 import spectra as sp
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "kernels_data")
+OUT = os.path.join(os.path.dirname(__file__), "kernels_data")
 os.makedirs(OUT, exist_ok=True)
 
 N_K = 60
