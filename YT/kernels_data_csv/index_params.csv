@@ -1,0 +1,8 @@
+name,value
+t_min,0.001
+t_max,3000.0
+n_per_decade,65
+n_seg_res,520
+n_s,24
+n_max,200000
+pts_per_period,45.0
